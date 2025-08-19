@@ -75,6 +75,6 @@ def convert_ips(input_urls, output_files):
                     continue
 
 if __name__ == "__main__":
-    input_urls = ["https://ipdb.api.030101.xyz/?type=bestproxy", "https://ipdb.api.030101.xyz/?type=bestcf"]  # 包含IP地址的txt文件的多个URL
+    input_urls = ["https://ipdb.api.030101.xyz/?type=bestproxy&country=true", "https://ipdb.api.030101.xyz/?type=bestcf"]  # 包含IP地址的txt文件的多个URL
     output_files = ["bestproxy.txt", "bestcf.txt"]
     convert_ips(input_urls, output_files)
