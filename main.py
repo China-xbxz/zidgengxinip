@@ -44,7 +44,7 @@ def get_location(ip):
 
 # 随机选一个端口
 def get_random_port():
-    return random.choice([443, 2096, 2053, 2083, 2087, 8443])
+    return random.choice([443])
 
 # 自动识别并转换
 def convert_ips(input_urls, output_files):
