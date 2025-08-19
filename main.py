@@ -1,11 +1,12 @@
 import requests
 import socket
+import random
 from bs4 import BeautifulSoup
 
 # 从URL获取IP列表
 def get_ips_from_url(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         if response.status_code == 200:
             return response.text.splitlines()
         else:
@@ -17,8 +18,7 @@ def get_ips_from_url(url):
 # 根据IP获取地理位置
 def get_location(ip):
     try:
-        # 优先尝试 pconline 接口
-        response = requests.get(f"http://whois.pconline.com.cn/ipJson.jsp?ip={ip}")
+        response = requests.get(f"http://whois.pconline.com.cn/ipJson.jsp?ip={ip}", timeout=5)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
             font_element = soup.find("font")
@@ -28,35 +28,23 @@ def get_location(ip):
                     return font_content.split('"pro": "')[1].split('"')[0]
                 elif '"city": "' in font_content:
                     return font_content.split('"city": "')[1].split('"')[0]
-    except Exception as e:
-        print(f"Error fetching location for IP {ip} using pconline: {e}")
+    except:
+        pass
 
     # 备用接口 ip-api
     try:
-        response = requests.get(f"http://ip-api.com/json/{ip}")
+        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
         data = response.json()
         if data['status'] == 'success':
             return data['countryCode']
-    except Exception as e:
-        print(f"Error fetching location for IP {ip} using ip-api.com: {e}")
+    except:
+        pass
+
     return None
 
-# 端口扫描（只扫常见CF/代理端口）
-def scan_ports(ip):
-    open_ports = []
-    for port in [443, 2096, 2053, 2083, 2087, 8443]:
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(1)
-            result = s.connect_ex((ip, port))
-            s.close()
-            if result == 0:
-                open_ports.append(port)
-        except:
-            pass
-    if not open_ports:
-        open_ports.append(443)  # 默认给443
-    return open_ports
+# 随机选一个端口
+def get_random_port():
+    return random.choice([443, 2096, 2053, 2083, 2087, 8443])
 
 # 自动识别并转换
 def convert_ips(input_urls, output_files):
@@ -74,8 +62,8 @@ def convert_ips(input_urls, output_files):
                     try:
                         ip, location = line.split("#", 1)
                         socket.inet_aton(ip)  # 校验IP
-                        open_ports = scan_ports(ip)
-                        f.write(f"{ip}:{open_ports[0]}#{location}\n")
+                        port = get_random_port()
+                        f.write(f"{ip}:{port}#{location}\n")
                     except:
                         f.write(f"{line}\n")
                     continue
@@ -92,10 +80,10 @@ def convert_ips(input_urls, output_files):
                     if not location:
                         location = "火星⭐"
 
-                    # 扫描端口
-                    open_ports = scan_ports(ip)
+                    # 随机端口
+                    port = get_random_port()
 
-                    f.write(f"{ip}:{open_ports[0]}#{location}\n")
+                    f.write(f"{ip}:{port}#{location}\n")
 
                 except socket.error:
                     # 非IP直接写原始行
