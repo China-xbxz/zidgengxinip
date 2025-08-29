@@ -1,10 +1,9 @@
 import requests
 import ipaddress
-import random
 import json
 import concurrent.futures
 
-# 从URL获取IP列表
+# ========== 获取IP列表 ==========
 def get_ips_from_url(url):
     try:
         response = requests.get(url, timeout=5)
@@ -16,9 +15,10 @@ def get_ips_from_url(url):
         print(f"⚠️ 请求 {url} 出错: {e}")
     return []
 
-# 根据IP获取地理位置
+
+# ========== 根据IP获取地理位置 ==========
 def get_location(ip):
-    # pconline接口
+    # 1. pconline
     try:
         response = requests.get(f"http://whois.pconline.com.cn/ipJson.jsp?ip={ip}&json=true", timeout=5)
         if response.status_code == 200:
@@ -30,22 +30,54 @@ def get_location(ip):
     except:
         pass
 
-    # 备用接口 ip-api
+    # 2. ip-api
     try:
-        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
+        response = requests.get(f"http://ip-api.com/json/{ip}?lang=zh-CN", timeout=5)
         data = response.json()
         if data['status'] == 'success':
-            return data['countryCode']
+            return data.get('country', data.get('countryCode'))
     except:
         pass
 
+    # 3. ipinfo.io
+    try:
+        response = requests.get(f"https://ipinfo.io/{ip}/json", timeout=5)
+        data = response.json()
+        if "country" in data:
+            return data["country"]
+        if "region" in data:
+            return data["region"]
+    except:
+        pass
+
+    # 4. ip.sb
+    try:
+        response = requests.get(f"https://api.ip.sb/geoip/{ip}", timeout=5)
+        data = response.json()
+        if "country" in data:
+            return data["country"]
+    except:
+        pass
+
+    # 5. ipapi.co
+    try:
+        response = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
+        data = response.json()
+        if "country_name" in data:
+            return data["country_name"]
+    except:
+        pass
+
+    # 都失败，返回默认
     return "火星⭐"
 
-# 随机端口，可扩展
-def get_random_port():
-    return random.choice([80, 443, 8443])
 
-# 处理单个IP
+# 固定端口 443
+def get_fixed_port():
+    return 443
+
+
+# ========== 处理单个IP ==========
 def process_ip(line):
     line = line.strip()
     if not line:
@@ -56,7 +88,9 @@ def process_ip(line):
         try:
             ip, location = line.split("#", 1)
             ipaddress.ip_address(ip)  # 校验 IP
-            port = get_random_port()
+            port = get_fixed_port()
+            if not location.strip():
+                location = "火星⭐"
             return f"{ip}:{port}#{location}"
         except:
             return line
@@ -66,39 +100,34 @@ def process_ip(line):
     ip = parts[0]
 
     try:
-        ipaddress.ip_address(ip)  # 支持 IPv4/IPv6
-
-        # 获取位置
-        location = get_location(ip)
-        if not location:
-            location = "火星⭐"
-
-        port = get_random_port()
+        ipaddress.ip_address(ip)  # 校验IP（支持 IPv4/IPv6）
+        location = get_location(ip) or "火星⭐"
+        port = get_fixed_port()
         return f"{ip}:{port}#{location}"
-
     except ValueError:
-        # 非IP，原样返回
         return line
 
-# 自动识别并转换
+
+# ========== 自动识别并转换 ==========
 def convert_ips(input_urls, output_files, max_workers=10):
     for input_url, output_file in zip(input_urls, output_files):
         ips = get_ips_from_url(input_url)
 
-        results = []
-        # 多线程查询，加快速度
+        results = set()  # 用 set 自动去重
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(process_ip, line) for line in ips]
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 if result:
-                    results.append(result)
+                    results.add(result)  # set 去重
 
         # 写文件
         with open(output_file, 'w', encoding="utf-8") as f:
-            f.write("\n".join(results))
+            f.write("\n".join(sorted(results)))  # 排序后写入
 
-        print(f"✅ 已保存 {len(results)} 条结果到 {output_file}")
+        print(f"✅ 已保存 {len(results)} 条去重结果到 {output_file}")
+
 
 if __name__ == "__main__":
     input_urls = [
