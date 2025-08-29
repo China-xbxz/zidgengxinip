@@ -94,6 +94,7 @@ if __name__ == "__main__":
     input_urls = [
         "https://ipdb.api.030101.xyz/?type=bestproxy&country=true",
         "https://ipdb.api.030101.xyz/?type=bestcf"
+        "https://raw.githubusercontent.com/hubbylei/bestcf/refs/heads/main/bestproxy.txt"
     ]
-    output_files = ["bestproxy.txt", "bestcf.txt"]
+    output_files = ["bestproxy.txt", "bestcf.txt", "best.txt"]
     convert_ips(input_urls, output_files)
