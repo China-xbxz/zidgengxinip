@@ -1,7 +1,7 @@
 import requests
 import socket
 import random
-from bs4 import BeautifulSoup
+import json
 
 # 从URL获取IP列表
 def get_ips_from_url(url):
@@ -18,16 +18,13 @@ def get_ips_from_url(url):
 # 根据IP获取地理位置
 def get_location(ip):
     try:
-        response = requests.get(f"http://whois.pconline.com.cn/ipJson.jsp?ip={ip}", timeout=5)
+        response = requests.get(f"http://whois.pconline.com.cn/ipJson.jsp?ip={ip}&json=true", timeout=5)
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            font_element = soup.find("font")
-            if font_element is not None:
-                font_content = font_element.text
-                if '"pro": "' in font_content:
-                    return font_content.split('"pro": "')[1].split('"')[0]
-                elif '"city": "' in font_content:
-                    return font_content.split('"city": "')[1].split('"')[0]
+            data = json.loads(response.text)
+            if "pro" in data and data["pro"]:
+                return data["pro"]
+            elif "city" in data and data["city"]:
+                return data["city"]
     except:
         pass
 
@@ -40,18 +37,18 @@ def get_location(ip):
     except:
         pass
 
-    return None
+    return "火星⭐"
 
-# 随机选一个端口
+# 固定端口（可扩展为多个端口随机）
 def get_random_port():
-    return random.choice([443])
+    return 443
 
 # 自动识别并转换
 def convert_ips(input_urls, output_files):
     for input_url, output_file in zip(input_urls, output_files):
         ips = get_ips_from_url(input_url)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, 'w', encoding="utf-8") as f:
             for line in ips:
                 line = line.strip()
                 if not line:
@@ -73,14 +70,14 @@ def convert_ips(input_urls, output_files):
                 ip = parts[0]
 
                 try:
-                    socket.inet_aton(ip)  # 校验IP
+                    socket.inet_aton(ip)  # 校验IPv4
 
                     # 获取位置
                     location = get_location(ip)
                     if not location:
-                        location = "火星⭐"
+                        location = "未知"
 
-                    # 随机端口
+                    # 固定端口
                     port = get_random_port()
 
                     f.write(f"{ip}:{port}#{location}\n")
@@ -93,7 +90,7 @@ def convert_ips(input_urls, output_files):
 if __name__ == "__main__":
     input_urls = [
         "https://ipdb.api.030101.xyz/?type=bestproxy&country=true",
-        "https://ipdb.api.030101.xyz/?type=bestcf"
+        "https://ipdb.api.030101.xyz/?type=bestcf",
         "https://raw.githubusercontent.com/hubbylei/bestcf/refs/heads/main/bestproxy.txt"
     ]
     output_files = ["bestproxy.txt", "bestcf.txt", "best.txt"]
